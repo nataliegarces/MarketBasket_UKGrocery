@@ -1,0 +1,119 @@
+---
+title: "Market Basket Analysis"
+author: "Natalie Garces"
+date: "7/3/2019"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r install packages}
+
+install.packages("arulesSequences", repos = "http://cran.us.r-project.org")
+install.packages("arules", repos = "http://cran.us.r-project.org")
+install.packages("arulesViz", repos = "http://cran.us.r-project.org")
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+install.packages("knitr", repos = "http://cran.us.r-project.org")
+install.packages("lubridate", repos = "http://cran.us.r-project.org")
+install.packages("plyr", repos = "http://cran.us.r-project.org")
+
+library(arulesSequences)
+library(arules)
+library(arulesViz)
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(plyr)
+library(dplyr)
+
+
+```{r}
+
+install.packages("magrittr", repos = "http://cran.us.r-project.org") # only needed the first time you use it
+install.packages("dplyr", repos = "http://cran.us.r-project.org")    # alternative installation of the %>%
+install.packages("plyr", repos = "http://cran.us.r-project.org")
+library(magrittr) # need to run every time you start R and want to use %>%
+library(dplyr)    # alternative, this also loads %>%
+library(plyr)
+library(dplyr)
+
+#Set Working Directory and Read Fine 
+setwd("/Users/natalie/Desktop")
+OnlineRetail <- read.csv("OnlineRetail.csv")
+head(OnlineRetail) 
+
+retail <- OnlineRetail[complete.cases(OnlineRetail),]
+
+#Format Variables appropriately
+retail %>% mutate(Description = as.factor(Description))
+retail %>% mutate(Country = as.factor(Country))
+
+retail$Date <- as.Date(retail$InvoiceDate)
+
+TransTime <- format(retail$Date, "%H:%M:%S")
+
+InvoiceNo <- as.numeric(as.character(retail$InvoiceNo))
+
+cbind(retail, TransTime)
+
+cbind(retail, InvoiceNo)
+
+glimpse(retail)
+
+transactiondata <- ddply(retail,c("InvoiceNo","Date"),
+                       function(df1)paste(df1$Description,
+                       collapse = ","))
+transactiondata
+
+transactiondata$InvoiceNo <- NULL
+transactiondata$Date <- NULL
+
+colnames(transactiondata) <- c('items')
+
+transactiondata
+
+write.csv(transactiondata,"/Users/natalie/Desktop/transactiondata", quote = FALSE, row.names = TRUE)
+
+
+
+```{r Plot Frequency of Items Purchased}
+
+
+##plot frequency
+library(arules)
+td <- read.transactions('transactiondata', format = 'basket', sep=',')
+summary(td)
+
+if (!require("RColorBrewer")) {
+  
+install.packages("RColorBrewer")
+library(RColorBrewer)
+}
+
+itemFrequencyPlot(td,topN=20,type="absolute",col=brewer.pal(8,'Pastel2'), main="Absolute Item Frequency Plot")
+
+
+
+```{r Make Association Rules}
+
+#make association rules
+library(arules)
+associationrule <- apriori(td, parameter = list(supp=0.001, conf=0.8,maxlen=10))
+
+summary(associationrule)
+
+inspect(associationrule[1:10])
+
+library(arules)
+library(arulesViz)
+plot(associationrule, method="two-key plot")
+plotly_arules(associationrule)
+```
+
